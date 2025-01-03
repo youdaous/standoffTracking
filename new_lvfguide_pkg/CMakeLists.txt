@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(vflos_pkg)
+project(new_lvfguide_pkg)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
@@ -106,7 +106,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
 #  INCLUDE_DIRS include
-#  LIBRARIES vflos_pkg
+#  LIBRARIES new_lvfguide_pkg
 #  CATKIN_DEPENDS geometry_msgs mavros roscpp rospy std_msgs
 #  DEPENDS system_lib
 )
@@ -124,7 +124,7 @@ include_directories(
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/vflos_pkg.cpp
+#   src/${PROJECT_NAME}/new_lvfguide_pkg.cpp
 # )
 
 ## Add cmake target dependencies of the library
@@ -135,7 +135,7 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-# add_executable(${PROJECT_NAME}_node src/vflos_pkg_node.cpp)
+# add_executable(${PROJECT_NAME}_node src/new_lvfguide_pkg_node.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -199,7 +199,7 @@ include_directories(
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_vflos_pkg.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_new_lvfguide_pkg.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()
@@ -207,29 +207,12 @@ include_directories(
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
 
-# compile four_LOS.cpp
-# include_directories(
-# include
-#   /home/yourous/ardupilot_ws/src/vflos_pkg/include/vflos_pkg/
-# )
 
-# add_executable(v2run_node 
-#   include/vflos_pkg/newpath.h
-#   src/four_LOS.cpp
-#   src/newpath.cpp
-# )
-
-# add_dependencies(v2run_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-
-# target_link_libraries(v2run_node
-#   ${catkin_LIBRARIES}
-# )
-
-## compile dingdian.cpp
-# add_executable(point_follow_node 
-#   src/dingdian.cpp
-# )
-
-# target_link_libraries(point_follow_node
-#   ${catkin_LIBRARIES}
-# )
+add_executable(lvfGuideNode
+  include/new_lvfguide_pkg/lvfGuide.h
+  src/lvfGuideFunc.cpp
+  src/lvfGuideNode.cpp
+)
+target_link_libraries(lvfGuideNode
+  ${catkin_LIBRARIES}
+)

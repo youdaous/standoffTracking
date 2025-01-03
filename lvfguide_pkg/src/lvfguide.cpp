@@ -23,6 +23,9 @@
 struct State {
     double x, y, u, v;
 };
+struct StateLatlon {
+    double latitude, longitude, u, v;
+};
 // 指导命令结构体
 struct Guide_law {
     double psi, kappa, r; 
@@ -37,8 +40,9 @@ struct EulerAngles {
 };
 // 初始化状态
 State hunter_state = {0, 0, 0, 0};  // 追捕船状态(local系)
-State target_state = {60, 20, 0, 0};  // 目标船状态(local系)
-int d = 20;  // 安全距离m
+State target_state = {60, 22.5, 0, 0};  // 目标船状态(local系)
+StateLatlon target_state_latlon = {31.05749000, 121.21058030, 0., 0.};
+int safe_distance = 0;  // 安全距离m
 double v_d = 4; // 期望速度m/s
 double lonO=121.20980712;//原点的经度
 double latO=31.05732962;//原点的纬度
@@ -90,7 +94,7 @@ Quaternion ToQuaternion(EulerAngles& angles) // yaw (Z), pitch (Y), roll (X)
 }
 
 // Lyapunov vector field guidance law
-Guide_law Lvf(const State& hunter, const State& target)
+Guide_law Lvf(const State& hunter, const State& target, int d)
 {
     // distance between hunter and target
     double dx = hunter.x - target.x;
@@ -98,15 +102,24 @@ Guide_law Lvf(const State& hunter, const State& target)
     double r = sqrt((dx * dx + dy * dy));
 
     // 计算矢量场参数c
-    double c = 1;   
-    if (r > 2 * d)
-    {
-        c = 0;
-    }
-    else
-    {
-        c = 0.25 * pow((1 - cos((r / d * M_PI))), 2);
-    }
+    double c = 2; 
+    // if (r >= d)
+    // {
+    //     c = d / r;
+    // }
+    // else
+    // {
+    //     c = r / d;
+    // } 
+
+    // if (r > 2 * d)
+    // {
+    //     c = 0;
+    // }
+    // else
+    // {
+    //     c = 0.25 * pow((1 - cos((r / d * M_PI))), 2);
+    // }
 
     // 计算速度矢量和偏航角，给出制导命令
     Guide_law guide ={0, 0, 0};
@@ -128,6 +141,27 @@ Guide_law Lvf(const State& hunter, const State& target)
     vx_d = target.u + alpha * vx_d;
     vy_d = target.v + alpha * vy_d;
     guide.psi = atan2(vy_d, vx_d);
+    return guide;
+}
+
+// tagent vector field
+Guide_law tlvf(const State& hunter, const State& target, int R)
+{
+    Guide_law guide = {0., 0., 0.};
+    double x_r = hunter.x - target.x;
+    double y_r = hunter.y - target.y;
+    double d = sqrt((x_r * x_r + y_r * y_r));
+    if (d <= R) {
+        guide = Lvf(hunter, target, R);
+    }
+    else {
+        double theta = -asin(R/d);
+        double x_t = target.x + R / d * (x_r * cos(theta) - y_r * sin(theta));
+        double y_t = target.y + R / d * (y_r * cos(theta) + x_r * sin(theta));
+        double beta = atan2(y_t - target.y, x_t - target.x) + M_PI;
+        guide.psi = beta;
+        guide.r = d;
+    }
     return guide;
 }
 
@@ -171,7 +205,7 @@ Guide_law lookahead_guide(const Guide_law& lvfguide, const double& yaw_t, const 
     // double dir = atan2(target.y - hunter.y, target.x - hunter.x);
     hunter_lookahead.x = hunter.x + cos(yaw_t) * lookahead_distace;
     hunter_lookahead.y = hunter.y + sin(yaw_t) * lookahead_distace;
-    Guide_law lvfguide_lookahead = Lvf(hunter_lookahead, target);
+    Guide_law lvfguide_lookahead = Lvf(hunter_lookahead, target, safe_distance);
     lvfguide_lookahead.kappa = err;
     return lvfguide_lookahead;
 }
@@ -194,6 +228,16 @@ double driftCompensation(const double& head_sensor, const double& course_angle)
         delta = 0;
     }
     return delta;
+}
+
+// 经纬度转xy坐标
+State latlontoXY(const StateLatlon& msg) {
+    double x = std::cos(msg.latitude*M_PI/180) * (msg.longitude - lonO) * 111319.9;
+    double y = (msg.latitude - latO) * 111319.9;
+    State state = {0., 0., 0., 0.};
+    state.x = x;
+    state.y = y;
+    return state;
 }
 
 // 回调函数
@@ -259,7 +303,8 @@ int main(int argc, char **argv)
 
     // 设置循环的频率
     ros::Rate loop_rate(10);
-    
+
+    target_state = latlontoXY(target_state_latlon);
 
     for(int i=0;i<5;i++)
     { 
@@ -268,7 +313,9 @@ int main(int argc, char **argv)
 
     while (ros::ok())
     {
-        Guide_law lvf_guide = Lvf(hunter_state, target_state);
+        n.param("safe_distance", safe_distance, 20);
+        // Guide_law lvf_guide = Lvf(hunter_state, target_state, safe_distance);
+        Guide_law lvf_guide = tlvf(hunter_state, target_state, safe_distance);
         
         // if (abs(sensor_angle.yaw - lvf_guide.psi) > 0.01)
         
@@ -318,7 +365,7 @@ int main(int argc, char **argv)
         // 发布期望航向角和实际航向角以分析误差
         geometry_msgs::PointStamped yaws;
         yaws.point.x = lvf_guide.psi;
-        yaws.point.y = sensor_angle.yaw;
+        yaws.point.y = lvf_guide.r;
         yaws.point.z = sensor_angle.yaw - lvf_guide.psi;
         ros::Time current_time_yawpub = ros::Time::now();
         yaws.header.stamp = current_time;

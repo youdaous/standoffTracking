@@ -70,8 +70,8 @@ State hunter_state = {0, 0, 0, 0};  // 追捕船状态(local系)
 State target_state = {60, 22.5, 0, 0};  // 目标船状态(local系)
 State obstacle_state = {0, 0, 0, 0};    // 障碍船状态(local系)
 Obstacles_set myobstacles;
-int safe_distance = 20;  // 安全距离m
-double v_d = 3; // 期望速度m/s
+int safe_distance = 0;  // 安全距离m
+double v_d = 2; // 期望速度m/s
 double lonO=121.20980712;//原点的经度
 double latO=31.05732962;//原点的纬度
 double thrust = 1;
@@ -618,6 +618,7 @@ int main(int argc, char **argv)
     bool flag = true;
     while (ros::ok())
     {
+        n.param("safe_distance", safe_distance, 20);
         boundary_pub.publish(myboundaryPath);
         // target_state = {210, 75, 0, 0};
         // 运行lyapunov VF制导函数
