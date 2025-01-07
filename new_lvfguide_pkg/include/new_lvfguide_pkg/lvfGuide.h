@@ -14,6 +14,15 @@ struct Guide_law {
     double psi, u, v, r, yaw_err;
 };
 
+// 编队参数结构体
+struct Formation_param {
+    double vel;
+    double theta_leader;
+    double theta_follower;
+    double phase_diff;
+    double set_phase;
+};
+
 // 四元数结构体
 struct Quaternion {
     double w, x, y, z;
@@ -36,7 +45,7 @@ double omega_function(double r, double d, double v_d);
 double phase_diff(double theta_i, double theta_j);
 
 // 跟随速度函数
-double follower_vel(const State& hunter, const State& target, const State& follower, double d, double v_d);
+Formation_param follower_vel(const State& leader, const State& target, const State& follower, double set_phase_diff, double d, double v_d);
 
 // Lyapunov vector field guidance law
 Guide_law Lvf(const State& hunter, const State& target, double d, double v_d);

@@ -71,26 +71,36 @@ double omega_function(double r, double d, double v_d) {
 // 计算相位差(逆时针)
 double phase_diff(double theta_i, double theta_j)
 {
-    """
+    /*
     计算逆时针的相位差
-    :param theta_i: 无人机 i 的相位（弧度，范围 [-pi, pi]）
-    :param theta_j: 无人机 j 的相位（弧度，范围 [-pi, pi]）
+    :param theta_i: follower无人机 i 的相位（弧度，范围 [-pi, pi]）
+    :param theta_j: leader无人机 j 的相位（弧度，范围 [-pi, pi]）
     :return: 同一方向的相位差 Δθ，范围 [0, 2π)
-    """
-    double delta_theta = theta_i - theta_j
-    double delta_theta_norm = 2 * M_PI - (delta_theta + 2 * M_PI) % (2 * M_PI)  // 归一化到 [0, 2π)
-    return delta_theta_norm
+    */
+
+    double delta_theta = theta_i - theta_j;
+    double delta_theta_norm = 2 * M_PI - fmod(delta_theta + 2 * M_PI, 2 * M_PI);  // 归一化到 [0, 2π)
+    return delta_theta_norm;
 }
 
 // 跟随速度函数
-double follower_vel(const State& leader, const State& target, const State& follower, double set_phase_diff, double d, double v_d)
+Formation_param follower_vel(const State& leader, const State& target, const State& follower, double set_phase_diff, double d, double v_d)
 {
     double theta_leader = atan2(leader.y - target.y, leader.x - target.x);
     double theta_follower = atan2(follower.y - target.y, follower.x - target.x);
     double delta_theta = phase_diff(theta_follower, theta_leader);
-    double k = 0.8 * v_d / (d * 2 * M_PI);
+    double k = 4.0 * v_d / (d * 2 * M_PI);
     double vel_follower = k * (delta_theta - set_phase_diff) * d + v_d;
-    return vel_follower;
+    vel_follower = std::clamp(vel_follower, 0.2, 2*v_d);
+    // ROS_INFO("theta_leader: %.3f, theta_follower: %.3f, delta_theta: %.3f, vel: %.3f, k: %.3f", \
+    //     theta_leader, theta_follower, delta_theta, vel_follower, k);
+    Formation_param output;
+    output.vel = vel_follower;
+    output.theta_leader = theta_leader;
+    output.theta_follower = theta_follower;
+    output.phase_diff = delta_theta;
+    output.set_phase = set_phase_diff;
+    return output;
 }
 
 // Lyapunov vector field guidance law
@@ -115,8 +125,7 @@ Guide_law Lvf(const State& hunter, const State& target, double d, double v_d)
     // 计算速度矢量和偏航角，给出制导命令
     Guide_law guide ={0, 0, 0, 0, 0};
     double vx_d, vy_d, v_t;
-    double v_dc = v_d;
-    double lam = -v_dc / (r * sqrt((pow(r, 4) + (c * c - 2) * r * r * d * d + pow(d, 4))));
+    double lam = -v_d / (r * sqrt((pow(r, 4) + (c * c - 2) * r * r * d * d + pow(d, 4))));
     vx_d = lam * ((r * r - d * d) * dx + c * r * d * dy);
     vy_d = lam * ((r * r - d * d) * dy - c * r * d * dx);
     guide.r = r;
@@ -131,7 +140,7 @@ Guide_law Lvf(const State& hunter, const State& target, double d, double v_d)
         return guide;
     }
     double alpha = (-(vx_d * target.u + vy_d * target.v) + 
-    sqrt(pow(vx_d * target.u + vy_d * target.v, 2) - pow(v_dc, 2) * ((pow(target.u, 2) + pow(target.v, 2)) - pow(v_dc, 2)))) / pow(v_dc, 2);
+    sqrt(pow(vx_d * target.u + vy_d * target.v, 2) - pow(v_d, 2) * ((pow(target.u, 2) + pow(target.v, 2)) - pow(v_d, 2)))) / pow(v_d, 2);
     vx_d = target.u + alpha * vx_d;
     vy_d = target.v + alpha * vy_d;
     guide.psi = atan2(vy_d, vx_d);

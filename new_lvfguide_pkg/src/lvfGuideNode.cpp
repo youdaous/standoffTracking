@@ -18,7 +18,7 @@
 // 全局状态对象
 State hunter_state = {0, 0, 0, 0, 0, 0};
 State target_state = {0, 0, 0, 0, 0, 0};
-State obstacle_state = {0, 0, 0, 0, 0, 0};
+State leader_state = {0, 0, 0, 0, 0, 0};
 
 double lonO=121.20980712;//原点的经度
 double latO=31.05732962;//原点的纬度
@@ -72,22 +72,22 @@ void velCallback_target(const geometry_msgs::TwistStamped& msg)
 }
 
 // 回调函数，订阅obstacle经纬度
-void gpsCallback_obstacle(const sensor_msgs::NavSatFix& msg)
+void gpsCallback_leader(const sensor_msgs::NavSatFix& msg)
 {
-    // double dx = std::cos(msg.latitude*M_PI/180) * (msg.longitude - lonO) * 111319.9;
-    // double dy = (msg.latitude - latO) * 111319.9;
-    // obstacle_state.x = dx;
-    // obstacle_state.y = dy;
+    double dx = std::cos(msg.latitude*M_PI/180) * (msg.longitude - lonO) * 111319.9;
+    double dy = (msg.latitude - latO) * 111319.9;
+    leader_state.x = dx;
+    leader_state.y = dy;
     // myobstacles.vertices.back() = Obstacle(obstacle_state, 10, false);
     // myobstacles.vertices.pop_back();
     // myobstacles.vertices.push_back(Obstacle(obstacle_state, 10, false));   
 }
 
 // 回调函数，订阅obstacle速度
-void velCallback_obstacle(const geometry_msgs::TwistStamped& msg)
+void velCallback_leader(const geometry_msgs::TwistStamped& msg)
 {
-    // obstacle_state.u = msg.twist.linear.x;
-    // obstacle_state.v = msg.twist.linear.y;
+    leader_state.u = msg.twist.linear.x;
+    leader_state.v = msg.twist.linear.y;
     // myobstacles.vertices.back() = Obstacle(obstacle_state, 10, false);
     // myobstacles.vertices.pop_back();
     // myobstacles.vertices.push_back(Obstacle(obstacle_state, 10, false));
@@ -100,32 +100,32 @@ int main(int argc, char **argv)
     // 创建节点句柄
     ros::NodeHandle n;
 
+    // 创建私有 NodeHandle
+    ros::NodeHandle private_nh("~");
+
     // 发布期望偏航角和实际偏航角，以欧拉角表示
-    ros::Publisher yaw_pub = n.advertise<geometry_msgs::PointStamped>("rover1/yawPub", 10);
+    ros::Publisher yaw_pub = n.advertise<geometry_msgs::PointStamped>("hunter/yawPub", 10);
+    ros::Publisher formation_msg_pub = n.advertise<geometry_msgs::TwistStamped>("hunter/formation_msg_pub", 10);
 
     // 发送速度和偏航
-    ros::Publisher setpoint_pub = n.advertise<mavros_msgs::PositionTarget>("/rover1/mavros/setpoint_raw/local", 10);
+    ros::Publisher setpoint_pub = n.advertise<mavros_msgs::PositionTarget>("hunter/mavros/setpoint_raw/local", 10);
 
-    // 创建一个Subscriber，订阅名为mavros/global_position/global的topic，注册回调函数poseCallback 订阅hunter经纬度
-    ros::Subscriber gps_sub = n.subscribe("rover1/mavros/global_position/global", 10, gpsCallback_hunter);
-
+    // 订阅hunter经纬度, 创建一个Subscriber，订阅名为mavros/global_position/global的topic，注册回调函数poseCallback 
+    ros::Subscriber gps_sub = n.subscribe("hunter/mavros/global_position/global", 10, gpsCallback_hunter);
     // 订阅hunter速度消息
-    ros::Subscriber vel_sub = n.subscribe("/rover1/mavros/local_position/velocity_local", 10, velCallback_hunter);
+    ros::Subscriber vel_sub = n.subscribe("hunter/mavros/local_position/velocity_local", 10, velCallback_hunter);
+    // 订阅hunter四元数, 创建一个Subscriber，订阅名为mavros/imu/data的topic，注册回调函数poseCallback 
+    ros::Subscriber angles_sub = n.subscribe("hunter/mavros/imu/data", 10, anglesCallback);
 
     // 订阅target经纬度
-    ros::Subscriber gps_sub_target = n.subscribe("rover2/mavros/global_position/global", 10, gpsCallback_target);
-
+    ros::Subscriber gps_sub_target = n.subscribe("target/mavros/global_position/global", 10, gpsCallback_target);
     // 订阅target速度消息
-    ros::Subscriber vel_sub_target = n.subscribe("rover2/mavros/local_position/velocity_local", 10, velCallback_target);
+    ros::Subscriber vel_sub_target = n.subscribe("target/mavros/local_position/velocity_local", 10, velCallback_target);
 
-    // 创建一个Subscriber，订阅名为mavros/imu/data的topic，注册回调函数poseCallback 订阅四元数
-    ros::Subscriber angles_sub = n.subscribe("rover1/mavros/imu/data", 10, anglesCallback);
-
-    // 订阅障碍船obstacle经纬度
-    ros::Subscriber gps_sub_obstacle = n.subscribe("rover3/mavros/global_position/global", 10, gpsCallback_obstacle);
-
-    // 订阅障碍船obstacl速度
-    ros::Subscriber vel_sub_obstacle = n.subscribe("rover3/mavros/local_position/velocity_local", 10, velCallback_obstacle);
+    // 订阅领航船leader经纬度
+    ros::Subscriber gps_sub_obstacle = n.subscribe("leader/mavros/global_position/global", 10, gpsCallback_leader);
+    // 订阅领航船leader速度
+    ros::Subscriber vel_sub_obstacle = n.subscribe("leader/mavros/local_position/velocity_local", 10, velCallback_leader);
 
     // 设置循环的频率
     ros::Rate loop_rate(10);
@@ -134,18 +134,28 @@ int main(int argc, char **argv)
     { 
         loop_rate.sleep();
     }
-    int safe_distance = 20;  // 安全距离m
+    double safe_distance = 20;  // 安全距离m
     double v_d = 2; // 期望速度m/s
+    Formation_param formation_param = {0., 0., 0., 0., 0.};
     Guide_law lvf_guide;
-    double guide_yaw;
     EulerAngles guide_angle;
-    double distance;
-    double factor = 1;
+    double distance = 0.0;
+    double factor = 1.0;
     bool flag = true;
+    bool is_follower = false; // 是否是跟随船
+    double set_phase_diff = 0.0; // 设定的环绕编队相位差(rad)
     while (ros::ok())
     {
-        n.param("safe_distance", safe_distance, 20);
+        n.param<double>("safe_distance", safe_distance, 20);
+        n.param<double>("desired_velocity", v_d, 2);
+        private_nh.param<bool>("is_follower", is_follower, false);
+        private_nh.param<double>("set_phase_diff", set_phase_diff, 0.0);      
         
+        if (is_follower && (distance < (safe_distance * 2.0))) {
+            formation_param = follower_vel(leader_state, target_state, hunter_state, set_phase_diff, factor * safe_distance, v_d);
+            v_d = formation_param.vel;
+            // ROS_INFO("%s, enter velfunc, v_d is %.3f ", ros::this_node::getName().c_str(), v_d);
+        }
         // 运行lyapunov VF制导函数
         lvf_guide = Lvf(hunter_state, target_state, factor * safe_distance, v_d);
         distance = lvf_guide.r;
@@ -166,34 +176,13 @@ int main(int argc, char **argv)
 
         // 前视补偿
         lvf_guide = lookahead_guide(lvf_guide, hunter_state, target_state, factor * safe_distance, v_d);
-        guide_yaw = lvf_guide.psi;
 
         // 漂移补偿
         double drift = driftCompensation(hunter_state.head, hunter_state.course);
         // double drift = 0;
-        guide_yaw = guide_yaw + drift;
-        guide_angle.yaw = guide_yaw;
-        Quaternion guide_qua = ToQuaternion(guide_angle);
-
-        // 发布setpoint_raw消息
-        // mavros_msgs::AttitudeTarget attitude_raw;//发布的期望姿态
-
-        // attitude_raw.orientation.w = guide_qua.w;
-        // attitude_raw.orientation.x = guide_qua.x;
-        // attitude_raw.orientation.y = guide_qua.y;
-        // attitude_raw.orientation.z = guide_qua.z;
-        
-        // attitude_raw.thrust = thrust;//油门值
-        // attitude_raw.type_mask =0b00000111 ;//0b00000111
-
-        // ros::Time current_time = ros::Time::now();
-        // attitude_raw.header.stamp = current_time;
-
-        // raw_pub.publish(attitude_raw);
-
-
-        // double beta = sensor_angle.yaw - course_angle.yaw;
-        ROS_INFO("yaw_d:%.3f, yaw_t:%.3f , r:%.3f, yaw_err:%.3f, distance_flag:%d", guide_angle.yaw, hunter_state.course, distance, lvf_guide.yaw_err, flag);
+        lvf_guide.psi = lvf_guide.psi + drift;
+    
+        // ROS_INFO("yaw_d:%.3f, yaw_t:%.3f , r:%.3f, yaw_err:%.3f, distance_flag:%d", guide_angle.yaw, hunter_state.course, distance, lvf_guide.yaw_err, flag);
         
         // publish TargetPosition msg
         mavros_msgs::PositionTarget setpoint;
@@ -207,24 +196,32 @@ int main(int argc, char **argv)
             mavros_msgs::PositionTarget::IGNORE_YAW_RATE; // Ignore yaw rate
 
         // Desired linear velocities (Body NED frame)
-        setpoint.velocity.x = 1.3; // Forward velocity
+        setpoint.velocity.x = lvf_guide.vel_linear_x; // Forward velocity
         setpoint.velocity.y = 0.0; // No lateral movement
         setpoint.velocity.z = 0.0; // Maintain altitude
 
         // Desired yaw angle (in radians)
-        setpoint.yaw = guide_yaw; // 90 degrees yaw
+        setpoint.yaw = lvf_guide.psi; // 90 degrees yaw
 
         setpoint_pub.publish(setpoint);
 
-        // // 发布期望航向角和实际航向角以分析误差
-        // geometry_msgs::PointStamped yaws;
-        // yaws.point.x = guide_angle.yaw;
-        // yaws.point.y = distance;
-        // yaws.point.z = course_angle.yaw - guide_angle.yaw;
-        // ros::Time current_time_yawpub = ros::Time::now();
-        // yaws.header.stamp = current_time;
-        
-        // yaw_pub.publish(yaws);
+        // 发布期望航向角和实际航向角以分析误差
+        geometry_msgs::PointStamped yaws;
+        yaws.point.x = lvf_guide.psi;
+        yaws.point.y = distance;
+        yaws.point.z = hunter_state.course - lvf_guide.psi;
+        yaws.header.stamp = ros::Time::now();
+        yaw_pub.publish(yaws);
+
+        //  发布编队信息
+        geometry_msgs::TwistStamped formation_msg;
+        formation_msg.twist.linear.x = formation_param.vel;
+        formation_msg.twist.linear.y = formation_param.theta_leader;
+        formation_msg.twist.linear.z = formation_param.theta_follower;
+        formation_msg.twist.angular.x = formation_param.phase_diff;
+        formation_msg.twist.angular.y = formation_param.set_phase;
+        formation_msg.header.stamp = ros::Time::now();
+        formation_msg_pub.publish(formation_msg);
 
         ros::spinOnce();
         loop_rate.sleep();
