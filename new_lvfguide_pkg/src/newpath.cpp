@@ -1,6 +1,6 @@
 //生成杜宾路径，一个？
 #include <nav_msgs/Path.h>
-#include "lvfguide_pkg/newpath.h"
+#include "../include/new_lvfguide_pkg/newpath.h"
 #include <tf/tf.h>
 #include <cmath>
 

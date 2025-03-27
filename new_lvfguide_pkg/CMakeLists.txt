@@ -212,6 +212,8 @@ add_executable(lvfGuideNode
   include/new_lvfguide_pkg/lvfGuide.h
   src/lvfGuideFunc.cpp
   src/lvfGuideNode.cpp
+  src/boundary_vf.cpp
+  src/newpath.cpp
 )
 target_link_libraries(lvfGuideNode
   ${catkin_LIBRARIES}

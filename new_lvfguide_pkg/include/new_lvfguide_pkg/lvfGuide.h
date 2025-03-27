@@ -14,7 +14,7 @@ struct Guide_law {
     double psi, u, v, r, yaw_err;
 };
 
-// 编队参数结构体
+// 相位编队参数结构体
 struct Formation_param {
     double vel;
     double theta_leader;

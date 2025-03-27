@@ -1,12 +1,13 @@
 <launch>
 
-    <arg name="target_name" default="rover1"/>
-    <arg name="leader_name" default="rover3"/>
-    <arg name="follower1_name" default="rover4"/>
-    <!-- <arg name="follower2_name" default="rover4"/> -->
+    <arg name="target_name" default="rover4"/>
+    <arg name="leader_name" default="rover1"/>
+    <arg name="follower1_name" default="rover2"/>
+    <arg name="follower2_name" default="rover3"/>
     
-    <param name="safe_distance" value="10.0"/>
-    <param name="desired_velocity" value="1.4"/>
+    <param name="safe_distance" value="15.0"/>
+    <param name="desired_velocity" value="2.0"/>
+    <param name="boundary_existed" value="true"/>
 
     <node name="leader_node" pkg="new_lvfguide_pkg" type="lvfGuideNode">
         <remap from="hunter/yawPub" to="/$(arg leader_name)/yawPub"/>
@@ -34,7 +35,27 @@
         <remap from="leader/mavros/local_position/velocity_local" to="/$(arg leader_name)/mavros/local_position/velocity_local"/>
         
         <param name="is_follower" value="true"/>
-        <param name="set_phase_diff" value="3.14159265"/>
+        <param name="set_phase_diff" value="2.0943951"/>
+        <param name="set_boudary_dis" value="5.0"/>
+    </node>
+
+    <node name="follower2_node" pkg="new_lvfguide_pkg" type="lvfGuideNode">
+        <remap from="hunter/formation_msg_pub" to="/$(arg follower2_name)/formation_msg_pub"/>
+        <remap from="hunter/yawPub" to="/$(arg follower2_name)/yawPub"/>
+        <remap from="hunter/mavros/setpoint_raw/local" to="/$(arg follower2_name)/mavros/setpoint_raw/local"/>
+        <remap from="hunter/mavros/global_position/global" to="/$(arg follower2_name)/mavros/global_position/global"/>
+        <remap from="hunter/mavros/local_position/velocity_local" to="/$(arg follower2_name)/mavros/local_position/velocity_local"/>
+        <remap from="hunter/mavros/imu/data" to="/$(arg follower2_name)/mavros/imu/data"/>
+
+        <remap from="target/mavros/global_position/global" to="/$(arg target_name)/mavros/global_position/global"/>
+        <remap from="target/mavros/local_position/velocity_local" to="/$(arg target_name)/mavros/local_position/velocity_local"/>
+
+        <remap from="leader/mavros/global_position/global" to="/$(arg leader_name)/mavros/global_position/global"/>
+        <remap from="leader/mavros/local_position/velocity_local" to="/$(arg leader_name)/mavros/local_position/velocity_local"/>
+        
+        <param name="is_follower" value="true"/>
+        <param name="set_phase_diff" value="4.1887902"/>
+        <param name="set_boudary_dis" value="5.0"/>
     </node>
 
     

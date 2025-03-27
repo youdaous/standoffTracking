@@ -1,4 +1,6 @@
 #include "../include/new_lvfguide_pkg/lvfGuide.h"
+#include "../include/new_lvfguide_pkg/boundary_vf.h"
+#include "../include/new_lvfguide_pkg/newpath.h"
 #include <ros/ros.h>
 #include <geometry_msgs/Twist.h>
 #include <geometry_msgs/TwistStamped.h>
@@ -94,7 +96,7 @@ void velCallback_leader(const geometry_msgs::TwistStamped& msg)
 }
 
 int main(int argc, char **argv)
-{  
+{
     // ROS节点初始化
     ros::init(argc, argv, "lvfGuideNode");
     // 创建节点句柄
@@ -127,6 +129,16 @@ int main(int argc, char **argv)
     // 订阅领航船leader速度
     ros::Subscriber vel_sub_obstacle = n.subscribe("leader/mavros/local_position/velocity_local", 10, velCallback_leader);
 
+    // 初始化边界路径
+    Boundary myboundary;
+    Point boundary_points[] = {Point(82.8, 35.4), Point(150, -15), Point(217.2, 74.6), Point(150, 125)};
+    int length = sizeof(boundary_points) / sizeof(boundary_points[0]);
+    for (int i = 0; i < length; i++)
+    {
+        myboundary.vertices.push_back(boundary_points[i]);
+    }
+    nav_msgs::Path myboundaryPath = DubinPath_from_boundary(myboundary);
+    
     // 设置循环的频率
     ros::Rate loop_rate(10);
     
@@ -137,6 +149,7 @@ int main(int argc, char **argv)
     double safe_distance = 20;  // 安全距离m
     double v_d = 2; // 期望速度m/s
     Formation_param formation_param = {0., 0., 0., 0., 0.};
+    LineFormationPara line_formation_param = {0., 0., 0.};
     Guide_law lvf_guide;
     EulerAngles guide_angle;
     double distance = 0.0;
@@ -144,12 +157,16 @@ int main(int argc, char **argv)
     bool flag = true;
     bool is_follower = false; // 是否是跟随船
     double set_phase_diff = 0.0; // 设定的环绕编队相位差(rad)
+    bool boundary_existed = false; // 是否存在边界
+    double set_boudary_dis = 0.0; // 设定的边界巡游编队相对距离(rad)
     while (ros::ok())
     {
         n.param<double>("safe_distance", safe_distance, 20);
         n.param<double>("desired_velocity", v_d, 2);
+        n.param<bool>("boundary_existed", boundary_existed, false);
         private_nh.param<bool>("is_follower", is_follower, false);
-        private_nh.param<double>("set_phase_diff", set_phase_diff, 0.0);      
+        private_nh.param<double>("set_phase_diff", set_phase_diff, 0.0);   
+        private_nh.param<double>("set_boudary_dis", set_boudary_dis, 0.0);     
         
         if (is_follower && (distance < (safe_distance * 2.0))) {
             formation_param = follower_vel(leader_state, target_state, hunter_state, set_phase_diff, factor * safe_distance, v_d);
@@ -176,6 +193,23 @@ int main(int argc, char **argv)
 
         // 前视补偿
         lvf_guide = lookahead_guide(lvf_guide, hunter_state, target_state, factor * safe_distance, v_d);
+
+        if (boundary_existed)
+        {
+            if (!Is_in_boundary(hunter_state, lvf_guide, myboundary))
+            {
+                double boudary_vel = v_d;
+                if (is_follower)
+                {
+                    line_formation_param = follower_boundary_vel(leader_state, hunter_state, set_boudary_dis);
+                    boudary_vel = line_formation_param.modify_vel;
+                }
+                ROS_INFO("Cross boundary!!!");
+                Guide_law lvf_boundary = boundary_guide(hunter_state, myboundaryPath, boudary_vel);
+                lvf_guide.psi = lvf_boundary.psi;
+                ROS_INFO("boundary distance:%.3f", lvf_boundary.r);
+            }
+        }
 
         // 漂移补偿
         double drift = driftCompensation(hunter_state.head, hunter_state.course);

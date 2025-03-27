@@ -184,7 +184,7 @@ Guide_law lookahead_guide(const Guide_law& lvfguide, const State& hunter, const 
     // }
 
     // const double distance_max = 0.4 * sqrt(pow(hunter.u - target.u, 2) + pow(hunter.v - target.v, 2));
-    const double distance_max = sqrt(pow(hunter.u - target.u, 2) + pow(hunter.v - target.v, 2));
+    const double distance_max = sqrt(pow(hunter.u - target.u, 2) + pow(hunter.v - target.v, 2)) * 0.1;
     double alpha;
     double lookahead_distace;
 

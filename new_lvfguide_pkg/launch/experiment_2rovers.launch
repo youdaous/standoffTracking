@@ -1,0 +1,23 @@
+<launch>
+
+    <arg name="target_name" default="Target"/>
+    <arg name="leader_name" default="Pursuer"/>
+    <!-- <arg name="follower1_name" default="rover3"/> -->
+    <!-- <arg name="follower2_name" default="rover4"/> -->
+    
+    <param name="safe_distance" value="20.0"/>
+    <param name="desired_velocity" value="3.0"/>
+    <param name="boundary_existed" value="true"/>
+
+    <node name="guide_node" pkg="new_lvfguide_pkg" type="lvfGuideNode">
+        <remap from="hunter/yawPub" to="/$(arg leader_name)/yawPub"/>
+        <remap from="hunter/mavros/setpoint_raw/local" to="/$(arg leader_name)/mavros/setpoint_raw/local"/>
+        <remap from="hunter/mavros/global_position/global" to="/$(arg leader_name)/mavros/global_position/global"/>
+        <remap from="hunter/mavros/local_position/velocity_local" to="/$(arg leader_name)/mavros/local_position/velocity_local"/>
+        <remap from="hunter/mavros/imu/data" to="/$(arg leader_name)/mavros/imu/data"/>
+
+        <remap from="target/mavros/global_position/global" to="/$(arg target_name)/mavros/global_position/global"/>
+        <remap from="target/mavros/local_position/velocity_local" to="/$(arg target_name)/mavros/local_position/velocity_local"/>
+    </node>
+
+</launch>
