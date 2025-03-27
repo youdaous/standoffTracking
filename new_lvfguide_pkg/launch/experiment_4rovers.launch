@@ -6,7 +6,7 @@
     <arg name="follower2_name" default="rover3"/>
     
     <param name="safe_distance" value="15.0"/>
-    <param name="desired_velocity" value="2.0"/>
+    <param name="desired_velocity" value="3.0"/>
     <param name="boundary_existed" value="true"/>
 
     <node name="leader_node" pkg="new_lvfguide_pkg" type="lvfGuideNode">
@@ -22,6 +22,7 @@
 
     <node name="follower1_node" pkg="new_lvfguide_pkg" type="lvfGuideNode">
         <remap from="hunter/formation_msg_pub" to="/$(arg follower1_name)/formation_msg_pub"/>
+        <remap from="hunter/line_formation_msg_pub" to="/$(arg follower1_name)/line_formation_msg_pub"/>
         <remap from="hunter/yawPub" to="/$(arg follower1_name)/yawPub"/>
         <remap from="hunter/mavros/setpoint_raw/local" to="/$(arg follower1_name)/mavros/setpoint_raw/local"/>
         <remap from="hunter/mavros/global_position/global" to="/$(arg follower1_name)/mavros/global_position/global"/>
@@ -41,6 +42,7 @@
 
     <node name="follower2_node" pkg="new_lvfguide_pkg" type="lvfGuideNode">
         <remap from="hunter/formation_msg_pub" to="/$(arg follower2_name)/formation_msg_pub"/>
+        <remap from="hunter/line_formation_msg_pub" to="/$(arg follower2_name)/line_formation_msg_pub"/>
         <remap from="hunter/yawPub" to="/$(arg follower2_name)/yawPub"/>
         <remap from="hunter/mavros/setpoint_raw/local" to="/$(arg follower2_name)/mavros/setpoint_raw/local"/>
         <remap from="hunter/mavros/global_position/global" to="/$(arg follower2_name)/mavros/global_position/global"/>
@@ -55,7 +57,7 @@
         
         <param name="is_follower" value="true"/>
         <param name="set_phase_diff" value="4.1887902"/>
-        <param name="set_boudary_dis" value="5.0"/>
+        <param name="set_boudary_dis" value="10.0"/>
     </node>
 
     

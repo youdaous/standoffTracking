@@ -108,6 +108,7 @@ int main(int argc, char **argv)
     // 发布期望偏航角和实际偏航角，以欧拉角表示
     ros::Publisher yaw_pub = n.advertise<geometry_msgs::PointStamped>("hunter/yawPub", 10);
     ros::Publisher formation_msg_pub = n.advertise<geometry_msgs::TwistStamped>("hunter/formation_msg_pub", 10);
+    ros::Publisher line_formation_msg_pub = n.advertise<geometry_msgs::TwistStamped>("hunter/line_formation_msg_pub", 10);
 
     // 发送速度和偏航
     ros::Publisher setpoint_pub = n.advertise<mavros_msgs::PositionTarget>("hunter/mavros/setpoint_raw/local", 10);
@@ -203,6 +204,12 @@ int main(int argc, char **argv)
                 {
                     line_formation_param = follower_boundary_vel(leader_state, hunter_state, set_boudary_dis);
                     boudary_vel = line_formation_param.modify_vel;
+                    geometry_msgs::TwistStamped line_formation_msg;
+                    line_formation_msg.twist.linear.x = line_formation_param.modify_vel;
+                    line_formation_msg.twist.linear.y = line_formation_param.delta_dis;
+                    line_formation_msg.twist.linear.z = line_formation_param.set_dis;
+                    line_formation_msg.header.stamp = ros::Time::now();
+                    line_formation_msg_pub.publish(line_formation_msg);
                 }
                 ROS_INFO("Cross boundary!!!");
                 Guide_law lvf_boundary = boundary_guide(hunter_state, myboundaryPath, boudary_vel);
