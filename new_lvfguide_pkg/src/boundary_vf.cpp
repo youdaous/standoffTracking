@@ -162,21 +162,22 @@ LineFormationPara follower_boundary_vel(const State& leader, const State& follow
 {
     // relativate distance
     double rela_dis = sqrt(pow(leader.x - follower.x, 2) + pow(leader.y - follower.y, 2));
-    // 相对位置向量
-    Point rela_pose = Point((leader.x - follower.x), (leader.y - follower.y));
+    // // 相对位置向量
+    // Point rela_pose = Point((leader.x - follower.x), (leader.y - follower.y));
 
-    double cos_leader_to_rela_pose = (leader.u * rela_pose.x + leader.v * rela_pose.y) / \
-    (sqrt(pow(leader.u, 2) + pow(leader.v, 2)) * sqrt(pow(rela_pose.x, 2) + pow(rela_pose.y, 2)));
+    // double cos_leader_to_rela_pose = (leader.u * rela_pose.x + leader.v * rela_pose.y) / \
+    // (sqrt(pow(leader.u, 2) + pow(leader.v, 2)) * sqrt(pow(rela_pose.x, 2) + pow(rela_pose.y, 2)));
 
-    double cos_follower_to_rela_pose = (follower.u * rela_pose.x + follower.v * rela_pose.y) / \
-    (sqrt(pow(follower.u, 2) + pow(follower.v, 2)) * sqrt(pow(rela_pose.x, 2) + pow(rela_pose.y, 2)));
+    // double cos_follower_to_rela_pose = (follower.u * rela_pose.x + follower.v * rela_pose.y) / \
+    // (sqrt(pow(follower.u, 2) + pow(follower.v, 2)) * sqrt(pow(rela_pose.x, 2) + pow(rela_pose.y, 2)));
 
-    double rela_dis_dot = 2 / M_PI * atan(set_distance - rela_dis);
+    // double rela_dis_dot = - 2 / M_PI * atan(set_distance - rela_dis);
 
-    double vel_follower_modify = (sqrt(pow(leader.u, 2) + pow(leader.v, 2)) * cos_leader_to_rela_pose + rela_dis_dot) / cos_follower_to_rela_pose;
-    
+    // double vel_follower_modify = (sqrt(pow(leader.u, 2) + pow(leader.v, 2)) * cos_leader_to_rela_pose + rela_dis_dot) / cos_follower_to_rela_pose;
+    double vel_follower_modify = sqrt(pow(leader.u, 2) + pow(leader.v, 2)) + 0.8 * sqrt(pow(leader.u, 2) + pow(leader.v, 2)) * 2 / M_PI * atan(rela_dis - set_distance);
     LineFormationPara output;
     output.modify_vel = vel_follower_modify;
     output.delta_dis = rela_dis;
     output.set_dis = set_distance;
+    return output;
 }

@@ -6,7 +6,7 @@
     <arg name="follower2_name" default="rover3"/>
     
     <param name="safe_distance" value="15.0"/>
-    <param name="desired_velocity" value="3.0"/>
+    <param name="desired_velocity" value="2.0"/>
     <param name="boundary_existed" value="true"/>
 
     <node name="leader_node" pkg="new_lvfguide_pkg" type="lvfGuideNode">

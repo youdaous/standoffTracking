@@ -132,7 +132,10 @@ int main(int argc, char **argv)
 
     // 初始化边界路径
     Boundary myboundary;
-    Point boundary_points[] = {Point(82.8, 35.4), Point(150, -15), Point(217.2, 74.6), Point(150, 125)};
+    // Point boundary_points[] = {Point(82.8, 35.4), Point(150, -15), Point(217.2, 74.6), Point(150, 125)};
+    // Point boundary_points[] = {Point(100,20), Point(200,10), Point(160,100)};
+    Point boundary_points[] = {Point(200,55), Point(175,98.3), Point(125,98.3), Point(100,55), Point(125,11.7), Point(175,11.7)};
+    // Point boundary_points[] = {Point(250,55),Point(200,141.6),Point(100,141.6),Point(50,55),Point(100,-31.6),Point(200,-31.6)};
     int length = sizeof(boundary_points) / sizeof(boundary_points[0]);
     for (int i = 0; i < length; i++)
     {
@@ -211,10 +214,11 @@ int main(int argc, char **argv)
                     line_formation_msg.header.stamp = ros::Time::now();
                     line_formation_msg_pub.publish(line_formation_msg);
                 }
-                ROS_INFO("Cross boundary!!!");
-                Guide_law lvf_boundary = boundary_guide(hunter_state, myboundaryPath, boudary_vel);
-                lvf_guide.psi = lvf_boundary.psi;
-                ROS_INFO("boundary distance:%.3f", lvf_boundary.r);
+                // ROS_INFO("Cross boundary!!!");
+                // Guide_law lvf_boundary = boundary_guide(hunter_state, myboundaryPath, boudary_vel);
+                lvf_guide = boundary_guide(hunter_state, myboundaryPath, boudary_vel);
+                // lvf_guide.psi = lvf_boundary.psi;
+                // ROS_INFO("boundary distance:%.3f", lvf_boundary.r);
             }
         }
 
